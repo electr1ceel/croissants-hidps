@@ -1,0 +1,4 @@
+#!/bin/bash
+sudo iptables -I FORWARD -j NFQUEUE --queue-balance 0:3
+sudo iptables -I INPUT -j NFQUEUE --queue-balance 0:3
+sudo iptables -I OUTPUT -j NFQUEUE --queue-balance 0:3

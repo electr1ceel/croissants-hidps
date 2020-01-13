@@ -1,0 +1,139 @@
+--[[    lua script : cryptxxx_urls.lua
+	purpose    : to check the url is matched in blacklisted CryptXXX Ransomware or not
+	rule       : reject tcp any any -> any any (msg:"CryptXXX Ransomware blacklisted URL"; luajit:cryptxxx_urls.lua; priority:1; sid: 100000000000; rev:1;)
+
+	author     : samiux (https://www.infosec-ninjas.com)
+	project    : Almond Croissants
+	license    : GPLv3
+	date       : JUL 24, 2016
+
+	Remarks    : (1) https protocol will not be processed.
+		     (2) google safe-browsing blacklisted is also not processed
+		         as it is blocked by firefox before suricata processing.
+]]
+
+-- this gets called during rule parsing
+function init(args)
+	local needs = {}
+ 	needs["http.request_headers"] = tostring(true)
+	return needs
+end
+
+-- this is a matcher function
+function match(args)
+	-- verbose mode - true or false
+	local verbose = false
+
+  -- read from file to global array
+	local url_file = nil
+  url_file = io.open("/etc/suricata/rules/cryptxxx.url", "r")
+
+	while not (url_file) do
+		local counter = 0
+    url_file = io.open("/etc/suricata/rules/cryptxxx.url", "r")
+		counter = counter + 1
+		if counter >= 10 then
+			counter = 0
+			-- fail to open file and operation quit
+			url_file:close()
+			return 0
+		end
+	end
+
+  -- counter and array
+  counter = 0
+  arr = {}
+  for line in url_file:lines() do
+    table.insert (arr, line);
+    counter = counter + 1
+  end
+	url_file:close()
+
+	-- get host name
+	http_host = HttpGetRequestHost()
+	if http_host == nil then
+		http_host = ""
+	end
+	-- get uri
+	http_uri = HttpGetRequestUriNormalized()
+	if http_uri == nil then
+		http_uri = ""
+	end
+	-- construct url
+	local http_url = "http://" .. http_host .. http_uri
+	local http_host_uri = http_host .. http_uri
+
+	if #http_host_uri > 0 then
+    -- logging to log file
+  	-- for all access
+  	local access_file = io.open("/var/log/suricata/cryptxxx_urls.log", "a")
+    while not (access_file) do
+    	local counter = 0
+    	access_file = io.open("/var/log/suricata/cryptxxx_urls.log", "a")
+    	counter = counter + 1
+    	if counter >= 10 then
+      	counter = 0
+      	-- fail to open file and operation quit
+				access_file:close()
+      	return 0
+    	end
+  	end
+
+    -- for alert only
+    local alert_file = io.open("/var/log/suricata/cryptxxx_urls_alert.log", "a")
+	  while not (alert_file) do
+      local counter = 0
+	   	alert_file = io.open("/var/log/suricata/cryptxxx_urls_alert.log", "a")
+    	counter = counter + 1
+    	if counter >= 10 then
+      	counter = 0
+      	-- fail to open file and operation quit
+				alert_file:close()
+      	return 0
+    	end
+    end
+
+		-- set counters
+		local last_index = 0
+		local last_value = ""
+
+		for index, value in ipairs(arr) do
+			-- if matched
+			if string.find(value, http_url) then
+				if verbose then
+					alert_file:write("********************************************\n")
+					alert_file:write("Counter : " .. counter .. " \n")
+					alert_file:write("Index   : " .. index .. " \n")
+				end
+				alert_file:write(os.date("[%x - %X] [**]" .. " BAD URL Match - " .. http_url .. " <@> " .. value .. " \n"))
+				access_file:write(os.date("[%x - %X] [**]" .. " BAD URL Match " .. http_url .. " <@> " .. value .. " \n"))
+				if verbose then
+					alert_file:write("********************************************\n")
+				end
+				alert_file:flush()
+				access_file:flush()
+				alert_file:close()
+				access_file:close()
+				return 1
+			else
+				-- get the last values
+				last_index = index
+				last_value = value
+			end
+		end
+    if verbose then
+			access_file:write("****************************\n")
+      access_file:write("Counter    : " .. counter .. " \n")
+      access_file:write("Last Index : " .. last_index .. " \n")
+      access_file:write(os.date("[%x - %X] Last Index : " .. last_value .. " \n"))
+      access_file:write(os.date("[%x - %X] Access URL : " .. http_url .. " - NOT Match \n"))
+      access_file:write("****************************\n")
+    end
+		access_file:write(os.date("[%x - %X] [--]" .. " URL NOT Match - " .. http_url .. " \n"))
+		access_file:flush()
+		access_file:close()
+		alert_file:flush()
+		alert_file:close()
+		return 0
+	end
+end
