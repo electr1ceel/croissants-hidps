@@ -2042,9 +2042,10 @@ END
 echo "Restarting Suricata ....."
 sudo systemctl daemon-reload
 sudo chmod +x /etc/croissants/conf.d/setfirewall
-sudo systemctl stop suricata
-sudo systemctl daemon-reload
-sudo systemctl restart suricata
+#sudo systemctl stop suricata
+#sudo systemctl daemon-reload
+#sudo systemctl restart suricata
+sudo kill -USR2 $(pidof suricata)
 sudo chmod +r /var/log/suricata/eve.json
 echo
 echo "Auto configure done!"
