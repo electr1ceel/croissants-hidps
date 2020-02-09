@@ -2990,6 +2990,10 @@ sudo rm -R cargo*
 sudo mv ~/update_ubuntu /usr/bin/
 sudo mv ~/check_drop /usr/bin/
 
+# move to /etc/suricata when 5.0.1 upgrade
+sudo mv ~/classification.config /etc/suricata
+sudo mv ~/reference.config /etc/suricata
+
 sudo mv ~/setfirewall /etc/croissants/conf.d/
 sudo mv ~/resetfirewall /etc/croissants/conf.d/
 
