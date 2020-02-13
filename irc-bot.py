@@ -19,7 +19,7 @@ import subprocess
 
 server = "chat.freenode.net"
 channel = "#croissants"
-botnick = "ninjas-" + str(random.randint(1, 100000000))
+botnick = "ninjas-h-" + str(random.randint(1, 100000000))
 port = 7070
 wait = 10
 
@@ -136,7 +136,7 @@ def connect():
       # to replace newest autoupdate.tar.gz
       if text.find( "REPLACE_AUTOUPDATE" ) != -1:
         if nick in administrators:
-          os.system("cd /tmp && wget https://github.com/samiux/update-croissants/raw/master/auto/croissants/autoupdate.tar.gz -O /tmp/autoupdate.tar.gz \
+          os.system("cd /tmp && wget https://github.com/samiux/update-croissants/raw/master/auto/croissants-hidps/autoupdate.tar.gz -O /tmp/autoupdate.tar.gz \
                           && sudo cp /tmp/autoupdate.tar.gz /etc/croissants/conf.d/")
           irc.send(bytes(str("PRIVMSG " + channel + " :" + "autoupdate.tar.gz file is replaced!\n"), "UTF-8"))
 
