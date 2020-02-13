@@ -2338,7 +2338,6 @@ sudo cat >>/lib/systemd/system/suricata.service <<END
 Description=Suricata IDPS Daemon
 Wants=network.target syslog.target
 After=network.target syslog.target
-Restart=on-failure
 
 [Service]
 Type=forking
