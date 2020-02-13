@@ -19,7 +19,7 @@ import subprocess
 
 server = "chat.freenode.net"
 channel = "#croissants"
-botnick = "ninjas-h-" + str(random.randint(1, 100000000))
+botnick = "ninjas-" + str(random.randint(1, 100000000))
 port = 7070
 wait = 10
 
@@ -83,6 +83,12 @@ def connect():
           msg = subprocess.getoutput("ls -la /etc/croissants/conf.d/autoupdate.tar.gz").strip('\n\r')
           irc.send(bytes(str("PRIVMSG " + channel + " :" + msg +"\n"), "UTF-8"))
 
+      # to check suricata.log
+      if text.find( "CHECK_SURICATA.LOG" ) != -1:
+        if nick in administrators:
+          msg = subprocess.getoutput("sudo tail -1 /var/log/suricata/suricata.log").strip('\n\r')
+          irc.send(bytes(str("PRIVMSG " + channel + " :" + msg +"\n"), "UTF-8"))
+
       # to say hello
       if text.find( "HELLO" ) != -1:
         if nick in administrators:
@@ -130,7 +136,7 @@ def connect():
       # to replace newest autoupdate.tar.gz
       if text.find( "REPLACE_AUTOUPDATE" ) != -1:
         if nick in administrators:
-          os.system("cd /tmp && wget https://github.com/samiux/update-croissants/raw/master/auto/croissants-hidps/autoupdate.tar.gz -O /tmp/autoupdate.tar.gz \
+          os.system("cd /tmp && wget https://github.com/samiux/update-croissants/raw/master/auto/croissants/autoupdate.tar.gz -O /tmp/autoupdate.tar.gz \
                           && sudo cp /tmp/autoupdate.tar.gz /etc/croissants/conf.d/")
           irc.send(bytes(str("PRIVMSG " + channel + " :" + "autoupdate.tar.gz file is replaced!\n"), "UTF-8"))
 
