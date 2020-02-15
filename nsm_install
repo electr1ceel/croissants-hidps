@@ -66,7 +66,7 @@ sudo apt -y autoremove
 # new version of Ubuntu does not install by default (e.g. ifconfig)
 sudo apt -y install net-tools
 
-sudo apt -y install git glances gdb
+sudo apt -y install git glances gdb fail2ban
 sudo apt -y install linux-tools-common linux-tools-generic cpufrequtils thermald fping
 sudo apt -y install ifupdown2 python3-pip
 
