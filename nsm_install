@@ -2931,6 +2931,10 @@ sudo chmod +x /etc/croissants/conf.d/resetfirewall
 sudo systemctl stop irqbalance
 sudo systemctl disable irqbalance
 
+# disable apport for avoiding high cpu loading and large hard disk spaces occupied
+sudo systemctl stop apport
+sudo systemctl disable apport
+
 # set date time to local
 #sudo dpkg-reconfigure tzdata
 sudo mv ~/set_timezone /usr/bin/
