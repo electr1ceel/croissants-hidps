@@ -320,7 +320,7 @@ fi
 # https://github.com/dgroenewegen/MetaSnort
 #
 #cd /tmp
-#wget https://www.infosec-ninjas.com/files/rules/metasploit-payloads.rules -O /tmp/metasploit-payloads.rules
+#wget https://github.com/samiux/update-croissants/raw/master/rules/metasploit-payloads.rules -O /tmp/metasploit-payloads.rules
 #if [ -s /tmp/metasploit-payloads.rules ]
 #then
 #	sudo cp /tmp/metasploit-payloads.rules /etc/suricata/rules/
@@ -368,6 +368,7 @@ then
         tar -xvzf ja3_fingerprints.tar.gz
         # copy the extracted files to suricata folder
 	sudo sed -i -e 's/alert/reject/g' ja3_fingerprints.rules
+        sudo sed -i 's/.*Adware/#&/' ja3_fingerprints.rules
         sudo cp ja3_fingerprints.rules /etc/suricata/rules/
         sudo cp ja3_fingerprints.rules /var/lib/suricata/rules
 fi
