@@ -2823,6 +2823,10 @@ sudo mv ~/set_timezone /usr/bin/
 sudo chmod +x /usr/bin/set_timezone
 sudo set_timezone
 
+# solve "Temporary failure in name resolution" as desktop version is enabled
+# apt policy netplan
+sudo systemctl restart systemd-resolved
+
 # start suricata
 sudo systemctl restart suricata
 
