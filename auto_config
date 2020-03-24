@@ -1334,8 +1334,8 @@ flow-timeouts:
 #                               # is used in a rule.
 #
 stream:
-  #memcap: 64mb
-  memcap: 1gb
+  memcap: 64mb
+  #memcap: 1gb
   checksum-validation: yes      # reject wrong csums
   inline: auto                  # auto will use inline mode in IPS mode, yes or no set it statically
   reassembly:
@@ -1356,8 +1356,8 @@ stream:
 host:
   hash-size: 4096
   prealloc: 1000
-  #memcap: 32mb
-  memcap: 128mb
+  memcap: 32mb
+  #memcap: 128mb
 
 # IP Pair table:
 #
