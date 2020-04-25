@@ -68,7 +68,7 @@ sudo apt -y install net-tools
 
 sudo apt -y install git glances gdb fail2ban
 sudo apt -y install linux-tools-common linux-tools-generic cpufrequtils thermald fping
-sudo apt -y install ifupdown2 ethtool
+sudo apt -y install ifupdown2 ethtool python3-pip
 
 ################### Install and Configure of ClamAV ##################
 sudo apt update
@@ -2828,6 +2828,9 @@ sudo set_timezone
 # solve "Temporary failure in name resolution" as desktop version is enabled
 # apt policy netplan
 sudo systemctl restart systemd-resolved
+
+# install suricata-update
+sudo pip3 install --update suricata-update
 
 # start suricata
 sudo systemctl restart suricata
