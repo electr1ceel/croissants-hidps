@@ -2830,7 +2830,7 @@ sudo set_timezone
 sudo systemctl restart systemd-resolved
 
 # install suricata-update
-sudo pip3 install --update suricata-update
+sudo pip3 install --upgrade suricata-update
 
 # start suricata
 sudo systemctl restart suricata
