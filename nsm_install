@@ -4,20 +4,20 @@
 # Description : Croissants install script (Host Based)
 #               This script will install Suricata, Hyperscan
 #               and other required packages.
-#               It is designed for Ubuntu Server 18.04.4 or 20.04 LTS 64-bit only.  Other
+#               It is designed for Ubuntu Server 20.04 LTS 64-bit only.  Other
 #               Linux distributions MAY not be worked.
 #
 # Author      : Samiux
 # Website     : https://samiux.github.io/croissants
 # Blog        : https://samiux.blogspot.com
-# Date        : Feb 16, 2020
-# Version     : 0.2
+# Date        : May 11, 2020
+# Version     : 0.3
 # License     : GPLv3 (Open Source)
 # Remarks     : This script is only for 16GB or more RAM system
 
 ############### briefing ####################
 # check if root
-if [ "$(id -u)" != "0" ]; then
+if [ "$(id -u)" != "0" ] && [ "$(pwd)" != "/root"]; then
 	echo "Sorry, you don't have root privileges to run this script."
 	exit 1
 fi
@@ -26,6 +26,7 @@ fi
 ping -c1 google.com 2>/dev/null 1>/dev/null
 if [ "$?" -ne 0 ]
 then
+	# for china users only
         ping -c1 baidu.com 2>/dev/null 1>/dev/null
         if [ "$?" -ne 0 ]
         then
@@ -39,42 +40,39 @@ echo "Croissants - Intrusion Detection and Prevention System (Host Based)"
 echo
 echo "This script will install Suricata, Hyperscan and other required packages."
 echo
-echo "This script is designed for Ubuntu 18.04.4 or 20.04 Server LTS 64-bit, Intel CPU with at least"
-echo "AVX2 feature and 1 network interface card.  Other Linux distributions or Ubuntu"
+echo "This script is designed for Ubuntu 20.04 Server LTS 64-bit, x86 CPU with SSSE3 feature"
+echo "at least and 1 network interface card/port.  Other Linux distributions or Ubuntu"
 echo "version MAY not be worked."
 echo
 echo "Before going to run this script, make sure you have edited the configure file,"
-echo "nsm.conf and make sure you can access to the internet."
-echo
-echo "To run this script with 'sudo' only."
+echo "nsm.conf and make sure you can access to the internet.  Also make sure you are at /root"
+echo "directory and in root privilege."
 echo
 echo "The installation may take hours depends on your hardware and bandwidth."
-echo
-echo "Last word, make sure you have Intel CPU with at least AVX2 and 1 network interface."
 echo
 echo "Press <Enter> to continue to install or Ctrl-C to abort ...."
 read
 
-############### read configure file ###############
+##############
+# installation
+##############
+# read configure file
 . nsm.conf
 
 sudo apt update
-sudo apt -y upgrade
+sudo apt -y dist-upgrade
 sudo apt -y autoclean
 sudo apt -y autoremove
 
-# new version of Ubuntu does not install by default (e.g. ifconfig)
-sudo apt -y install net-tools
-
-sudo apt -y install git glances gdb fail2ban
+####################
+# essential packages
+####################
+sudo apt -y install net-tools glances git python3-pip ethtool clamav ifupdown fail2ban
 sudo apt -y install linux-tools-common linux-tools-generic cpufrequtils thermald fping
-sudo apt -y install ifupdown ethtool python3-pip
 
-################### Install and Configure of ClamAV ##################
-sudo apt update
-sudo apt -y install clamav
-
-# setup blacklist_md5
+###############################
+# setup blacklist_md5 of clamav
+###############################
 if [ -f /usr/bin/nsm_blacklist_md5 ]
 then
 	sudo rm /usr/bin/nsm_blacklist_md5
@@ -83,7 +81,7 @@ fi
 sudo touch /usr/bin/nsm_blacklist_md5
 sudo cat >> /usr/bin/nsm_blacklist_md5 <<END
 #!/bin/bash
-# Author      : Samiux (https://www.infosec-ninjas.com)
+# Author      : Samiux (https://samiux.github.io)
 # Date        : SEP 22, 2017
 # Version     : 0.2
 # License     : GPLv3 (Open Source)
@@ -188,7 +186,7 @@ then
 	fi
 fi
 
-############### Linux Malware Detect MD5 #####################
+# Linux Malware Detect MD5
 cd /tmp
 wget http://cdn.rfxn.com/downloads/maldet-sigpack.tgz -O /tmp/maldet-sigpack.tgz
 
@@ -219,14 +217,20 @@ END
 # make it executable
 sudo chmod +x /usr/bin/nsm_blacklist_md5
 
+###############################################
+# installation of suricata and its dependencies
+###############################################
 sudo apt -y install redis-server
 
+# install PPA suricata and its dependencies
 sudo add-apt-repository -y ppa:oisf/suricata-stable
 sudo apt update
 sudo apt -y install suricata
-sudo apt -y install suricata-dbg
+#sudo apt -y install suricata-dbg
 
-######################## iprep setup #################
+#############
+# iprep setup
+#############
 sudo mkdir -p /etc/suricata/rules/iprep
 if [ -f /etc/suricata/iprep_categories ]
 then
@@ -238,8 +242,9 @@ sudo cat >> /etc/suricata/iprep_categories <<END
 2,torexitnode,TOR exit nodes
 END
 
-
-################ suricata.yaml setup #####################
+#####################
+# suricata.yaml setup
+#####################
 sudo mv /etc/suricata/suricata.yaml /etc/suricata/suricata.yaml.croissants
 sudo touch /etc/suricata/suricata.yaml
 sudo cat >> /etc/suricata/suricata.yaml <<END
@@ -829,7 +834,7 @@ logging:
 
 # Linux high speed capture support
 af-packet:
-  - interface: $INF_INCOMING
+  - interface: eth0
     # Number of receive threads. "auto" uses the number of cores
     #threads: auto
     # Default clusterid. AF_PACKET will load balance packets based on flow.
@@ -901,16 +906,16 @@ af-packet:
     #  For eBPF and XDP setup including bypass, filter and load balancing, please
     #  see doc/userguide/capture-hardware/ebpf-xdp.rst for more info.
     copy-mode: ips
-    copy-iface: $INF_OUTGOING
+    copy-iface: eth1
     buffer-size: 1497366528
 
-  - interface: $INF_OUTGOING
+  - interface: eth1
     #threads: auto
     cluster-id: 98
     cluster-type: cluster_flow
     defrag: no
     copy-mode: ips
-    copy-iface: $INF_INCOMING
+    copy-iface: eth0
     buffer-size: 1497366528
     use-mmap: yes
     #mmap-locked: yes
@@ -2134,7 +2139,9 @@ sudo mkdir /var/run/suricata
 sudo chown -R root:root /var/log/suricata
 sudo chmod -R 755 /var/log/suricata
 
-############ create systemd file ##############
+#####################
+# create systemd file
+#####################
 if [ -f /lib/systemd/system/suricata.service ]
 then
 	sudo rm /lib/systemd/system/suricata.service
@@ -2160,11 +2167,9 @@ Restart=on-failure
 WantedBy=multi-user.target
 END
 
-# create nsm_rules_update
-cd ~
-sudo cp ~/nsm_rules_update /usr/bin/
-
+######################
 # create nsm_cleanlogs
+######################
 if [ -f /usr/bin/nsm_cleanlogs ]
 then
 	sudo rm /usr/bin/nsm_cleanlogs
@@ -2183,16 +2188,20 @@ sudo rm /core
 sudo rm /var/crash/*
 END
 
+#####################
 # for suricata-update
+#####################
 sudo mkdir -p /var/lib/suricata/rules
-sudo mkdir -p /var/lib/usricata/update
+sudo mkdir -p /var/lib/suricata/update
 
-sudo cp ~/drop.conf_sample /etc/suricata/
-sudo cp ~/disable.conf_sample /etc/suricata/
-sudo cp ~/enable.conf_sample /etc/suricata/
-sudo cp ~/modify.conf_sample /etc/suricata/
+sudo mv /root/drop.conf_sample /etc/suricata/
+sudo mv /root/disable.conf_sample /etc/suricata/
+sudo mv /root/enable.conf_sample /etc/suricata/
+sudo mv /root/modify.conf_sample /etc/suricata/
 
-########## create logrotate ###############
+##################
+# create logrotate
+##################
 
 sudo mkdir /var/log/suricata/StatsByDate
 
@@ -2347,39 +2356,35 @@ sudo cat >>/etc/logrotate.d/suricata <<END
 }
 END
 
+####################
 # create local.rules
-sudo mv /etc/suricata/rules/local.rules /etc/suricata/rules/local.rules-original
+####################
+if [ -f /var/lib/suricata/rules/local.rules ]
+then
+	sudo mv /etc/suricata/rules/local.rules /etc/suricata/rules/local.rules-original
+fi
 sudo touch /etc/suricata/rules/local.rules
 sudo cat >> /etc/suricata/rules/local.rules <<END
 # 100000000-100999999 Reserved for Local Use -- Put your custom rules in this range to avoid conflicts
 END
 
-# dummy rules files
-#sudo touch /etc/suricata/rules/virusshare.rules
-sudo touch /etc/suricata/rules/croissants2.rules
-sudo touch /etc/suricata/rules/croissants.rules
+################################
+# moving rules and related files
+################################
+sudo touch /var/lib/suricata/rules/clamav_md5
+sudo touch /var/lib/suricata/rules/lmd_md5
+sudo mv /root/croissants2.rules /var/lib/suricata/rules/
 
-# copy rules files to their location
-sudo touch /etc/suricata/rules/clamav_md5
-sudo touch /etc/suricata/rules/lmd_md5
-sudo cp ~/croissants.rules /etc/suricata/rules/
-sudo cp ~/croissants2.rules /etc/suricata/rules/
+sudo mv /root/cryptxxx_md5 /var/lib/suricata/rules/
+sudo mv /root/cryptxxx.blacklist /var/lib/suricata/rules/
+sudo mv /root/malware_sha1 /var/lib/suricata/rules/
+sudo mv /root/malware_sha256 /var/lib/suricata/rules/
+sudo mv /root/*.url /var/lib/suricata/rules/
+sudo mv /root/*.lua /var/lib/suricata/rules/
 
-sudo cp ~/malware_sha1 /etc/suricata/rules/malware_sha1
-sudo cp ~/malware_sha256 /etc/suricata/rules/malware_sha256
-
-# for suricata-update
-sudo cp /etc/suricata/rules/local.rules /var/lib/suricata/rules/
-sudo cp /etc/suricata/rules/croissants2.rules /var/lib/suricata/rules/
-sudo cp /etc/suricata/rules/croissants.rules /var/lib/suricata/rules/
-
-sudo cp /etc/suricata/rules/malware_sha1 /var/lib/suricata/rules/
-sudo cp /etc/suricata/rules/malware_sha256 /var/lib/suricata/rules/
-
-# clean up temp directories
-sudo rm -R ~/tmp
-
-############# performance and security tuning ##################
+#################################
+# performance and security tuning
+#################################
 if [ -f /etc/sysctl.d/60-croissants.conf ]
 then
 	sudo rm /etc/sysctl.d/60-croissants.conf
@@ -2391,7 +2396,6 @@ sudo cat >>/etc/sysctl.d/60-croissants.conf <<END
 kernel.printk_ratelimit = 0
 
 # performance tuning
-#kernel.sem = 250 32000 100 128
 kernel.sem = 250 32000 100 1024
 kernel.shmall = 2097152
 kernel.shmmax = 2147483648
@@ -2418,7 +2422,6 @@ net.ipv4.tcp_wmem = 65536 33554432 67108864
 net.ipv4.tcp_no_metrics_save = 1
 net.ipv4.tcp_window_scaling = 1
 net.ipv4.ip_local_port_range = 1024 65535
-#net.ipv4.tcp_max_tw_buckets = 360000
 net.ipv4.tcp_max_tw_buckets = 20000000
 net.core.optmem_max = 409600
 
@@ -2427,14 +2430,11 @@ net.ipv4.tcp_tw_reuse = 1
 net.ipv4.tcp_tw_recycle = 1
 net.ipv4.tcp_syn_retries = 2
 net.ipv4.tcp_synack_retries = 2
-#net.core.somaxconn = 32768
 net.core.somaxconn = 2048
 # added on 2020-02-07
 net.ipv4.tcp_sack = 0
-#net.core.netdev_max_backlog = 50000000
 net.core.rmem_default=33554432
 net.ipv4.tcp_max_syn_backlog = 65536
-#net.ipv4.tcp_mem = 94500000 915000000 927000000
 
 # security setting
 
@@ -2546,11 +2546,11 @@ vm.nr_hugepages = 0
 # https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Performance_Tuning_Guide/s-network-common-queue-issues.html
 net.core.dev_weight = 256
 
-# increase the tcp sockets timeouts
-#net.ipv4.tcp_keepalive_time = 2400
 END
 
-############# anti-ddos ###########################
+###########
+# anti-ddos
+###########
 if [ -f /etc/sysctl.d/65-ddos.conf ]
 then
         sudo rm /etc/sysctl.d/65-ddos.conf
@@ -2564,18 +2564,12 @@ kernel.printk = 4 4 1 7
 kernel.panic = 10
 kernel.sysrq = 0
 kernel.shmmax = 4294967296
-#kernel.shmall = 4194304
 kernel.core_uses_pid = 1
 kernel.msgmnb = 65536
 kernel.msgmax = 65536
-#vm.swappiness = 20
-#vm.dirty_ratio = 80
 vm.dirty_background_ratio = 5
 fs.file-max = 2097152
-#net.core.netdev_max_backlog = 262144
-#net.core.rmem_default = 31457280
 net.core.rmem_max = 67108864
-#net.core.wmem_default = 31457280
 net.core.wmem_max = 67108864
 net.core.somaxconn = 65535
 net.core.optmem_max = 25165824
@@ -2603,20 +2597,15 @@ net.ipv4.icmp_ignore_bogus_error_responses = 1
 net.ipv4.tcp_congestion_control = htcp
 net.ipv4.tcp_mem = 65536 131072 262144
 net.ipv4.udp_mem = 65536 131072 262144
-#net.ipv4.tcp_rmem = 4096 87380 33554432
 net.ipv4.udp_rmem_min = 16384
-#net.ipv4.tcp_wmem = 4096 87380 33554432
 net.ipv4.udp_wmem_min = 16384
-#net.ipv4.tcp_max_tw_buckets = 1440000
 net.ipv4.tcp_tw_recycle = 0
 net.ipv4.tcp_tw_reuse = 1
-#net.ipv4.tcp_max_orphans = 400000
 net.ipv4.tcp_window_scaling = 1
 net.ipv4.tcp_rfc1337 = 1
 net.ipv4.tcp_syncookies = 1
 net.ipv4.tcp_synack_retries = 1
 net.ipv4.tcp_syn_retries = 2
-#net.ipv4.tcp_max_syn_backlog = 16384
 net.ipv4.tcp_timestamps = 1
 net.ipv4.tcp_sack = 1
 net.ipv4.tcp_fack = 1
@@ -2633,28 +2622,35 @@ net.ipv4.conf.all.accept_source_route = 0
 net.ipv4.conf.all.rp_filter = 1
 END
 
-# copy autoupdate.tar.gz
-if [ -f ~/autoupdate.tar.gz ]
-then
-	sudo cp ~/autoupdate.tar.gz /etc/croissants/conf.d/
-fi
+####################################
+# create croissants conf.d directory
+####################################
+sudo mkdir -p /etc/croissants/conf.d
 
-cd ~
+############
 # ids to ips
-sudo chmod +x ~/ids_to_ips
-sudo ~/ids_to_ips
+############
+cd /root
+sudo chmod +x /root/ids_to_ips
+sudo /root/ids_to_ips
 
-# update the rules
-#sudo freshclam
+#######################################
+# update the clamav and malicious rules
+#######################################
 sudo systemctl stop clamav-freshclam
 sudo systemctl disable clamav-freshclam
 sudo nsm_blacklist_md5
 
+####################################
 # set read permission to rules files
-sudo chmod 644 /etc/suricata/rules/*.rules
+####################################
 sudo chmod 644 /var/lib/suricata/rules/*.rules
+sudo chmod 644 /var/lib/suricata/rules/*.lua
+sudo chmod 644 /var/lib/suricata/rules/*.url
 
-######### /etc/rc.local setting ##############
+#######################
+# /etc/rc.local setting
+#######################
 sudo mv /etc/rc.local /etc/rc.local-original
 sudo touch /etc/rc.local
 sudo cat >>/etc/rc.local <<END
@@ -2671,18 +2667,14 @@ sudo cat >>/etc/rc.local <<END
 #
 # By default this script does nothing.
 
-#echo "never" | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
 echo never > /sys/kernel/mm/transparent_hugepage/enabled
 
 exit 0
 END
 
-# make scripts executable
-sudo chmod +x /usr/bin/nsm_cleanlogs
-sudo chmod +x /usr/bin/nsm_rules_update
-sudo chmod +x /usr/bin/nsm_cronjob_rules_update
-
-# -------> create setfirewall
+####################
+# create setfirewall
+####################
 if [ -f /etc/croissants/conf.d/setfirewall ]
 then
 	sudo rm /etc/croissants/conf.d/setfirewall
@@ -2695,8 +2687,10 @@ sudo iptables -I INPUT -j NFQUEUE --queue-balance $NF_IPTABLES
 sudo iptables -I OUTPUT -j NFQUEUE --queue-balance $NF_IPTABLES
 END
 
-# ------------> create crontab and script at /usr/bin
+#######################################
+# create crontab and script at /usr/bin
 # remove the crontab first
+#######################################
 sudo crontab -r
 sudo crontab -l > /tmp/mycron
 echo "#50 01,09,17 * * * /usr/bin/nsm_blacklist_md5" | sudo tee -a /tmp/mycron
@@ -2710,134 +2704,118 @@ echo "#00 00,12 * * * /usr/bin/update_ubuntu" | sudo tee -a /tmp/mycron
 echo "*/15 * * * * /usr/bin/check_drop" | sudo tee -a /tmp/mycron
 sudo crontab /tmp/mycron
 
+####################
 # auto configuration
+####################
 sudo mkdir -p /etc/croissants/conf.d/
-sudo cp ~/nsm.conf /etc/croissants/conf.d/
-sudo cp ~/auto_config /etc/croissants/conf.d/
 
-sudo chmod +x ~/auto_update
-sudo cp ~/auto_update /etc/croissants/conf.d/
+sudo mv /root/nsm.conf /etc/croissants/conf.d/
+sudo mv /root/reset_config /etc/croissants/conf.d/
+sudo mv /root/auto_config /etc/croissants/conf.d/
+sudo mv /root/auto_update /etc/croissants/conf.d/
 
-sudo chmod +x /etc/croissants/conf.d/auto_config
+sudo mv /root/auto_ip_config /etc/croissants/conf.d/
+sudo mv /root/auto_nat_config /etc/croissants/conf.d/
+sudo mv /root/auto_network_config /etc/croissants/conf.d/
+sudo mv /root/set_timezone /etc/croissants/conf.d/
+sudo mv /root/sshkey_regen /etc/croissants/conf.d/
 
-# install irc-bot
-sudo chmod +x ~/irc-bot_install
-sudo chmod +x ~/irc-bot.py
-sudo cp ~/irc-bot.py /etc/croissants/conf.d/
-sudo ~/irc-bot_install
-
-# set eve.json readable to logstash
-sudo mkdir -p /var/log/suricata
-sudo touch /var/log/suricata/eve.json
-sudo chmod +r /var/log/suricata/eve.json
-
-# copy bad_urls.lua, cryptxxx_urls.lua, ransomware_urls.lua
-sudo cp ~/bad_urls.lua /etc/suricata/rules
-sudo cp ~/cryptxxx_urls.lua /etc/suricata/rules
-sudo cp ~/ransomware_urls.lua /etc/suricata/rules
-sudo cp ~/xss_sqli.lua /etc/suricata/rules
-sudo cp ~/xss_sqli_body.lua /etc/suricata/rules
-sudo cp ~/adservers_urls.lua /etc/suricata/rules
-
-# for suricata-update
-sudo cp /etc/suricata/rules/*.lua /var/lib/suricata/rules/
-
-# copy to the desination
-sudo cp ~/auto_ip_config /etc/croissants/conf.d/
-sudo chmod +x /etc/croissants/conf.d/auto_ip_config
-sudo cp ~/set_timezone /etc/croissants/conf.d/
-sudo chmod +x /etc/croissants/conf.d/set_timezone
-sudo cp ~/sshkey_regen /etc/croissants/conf.d/
-sudo chmod +x /etc/croissants/conf.d/sshkey_regen
-sudo cp ~/reset_config /etc/croissants/conf.d/
 sudo chmod +x /etc/croissants/conf.d/reset_config
+sudo chmod +x /etc/croissants/conf.d/auto_config
+sudo chmod +x /etc/croissants/conf.d/auto_update
 
+sudo chmod +x /etc/croissants/conf.d/auto_ip_config
+sudo chmod +x /etc/croissants/conf.d/auto_nat_config
+sudo chmod +x /etc/croissants/conf.d/auto_network_config
+sudo chmod +x /etc/croissants/conf.d/set_timezone
+sudo chmod +x /etc/croissants/conf.d/sshkey_regen
+
+########################
+# copy autoupdate.tar.gz
+########################
+if [ -f /root/autoupdate.tar.gz ]
+then
+        sudo mv /root/autoupdate.tar.gz /etc/croissants/conf.d/
+fi
+
+##################################
+# moving & making executable files
+##################################
+cd /root
+sudo mv /root/nsm_rules_update /usr/bin/
+sudo mv /root/update_ubuntu /usr/bin/
+sudo mv /root/check_drop /usr/bin/
+sudo mv /root/nsm_rules_reload /usr/bin/
+
+sudo chmod +x /usr/bin/update_ubuntu
+sudo chmod +x /usr/bin/check_drop
+sudo chmod +x /usr/bin/nsm_rules_update
+sudo chmod +x /usr/bin/nsm_rules_reload
+
+sudo chmod +x /usr/bin/nsm_cleanlogs
+sudo chmod +x /usr/bin/nsm_cronjob_rules_update
+
+#################
+# install irc-bot
+#################
+sudo chmod +x /root/irc-bot_install
+sudo chmod +x /root/irc-bot.py
+sudo mv /root/irc-bot.py /etc/croissants/conf.d/
+sudo /root/irc-bot_install
+
+#############
+# create logs
+#############
 sudo touch /var/log/suricata/bad_urls.log
-#sudo touch /var/log/suricata/bad_urls_alert.log
 sudo touch /var/log/suricata/ransomware_urls.log
-#sudo touch /var/log/suricata/ransomware_urls_alert.log
 sudo touch /var/log/suricata/cryptxxx_urls.log
-#sudo touch /var/log/suricata/cryptxxx_urls_alert.log
 sudo touch /var/log/suricata/xss.log
-#sudo touch /var/log/suricata/xss_alert.log
 
+#########################
 # enable systemd services
+#########################
 sudo systemctl daemon-reload
 sudo systemctl enable suricata
 
-# clean up
-cd ~
-sudo rm -R ~/croissants*
-sudo rm ids_to_ips
-sudo rm nsm.conf
-sudo rm auto_config
-sudo rm nsm_rules_update
-sudo rm nsm_rules_reload
-sudo rm *croissants.rules
-sudo rm *_sample
-sudo rm *.tar.gz
-sudo rm nsm_install
-sudo rm auto_update
-sudo rm *.lua
-sudo rm *.deb
-
-sudo rm ~/auto*
-sudo rm ~/*.url
-sudo rm ~/cry*
-sudo rm ~/sshkey*
-#sudo rm ~/set_timezone
-sudo rm ~/rulecat.conf
-sudo rm ~/gmon.out
-sudo rm ~/malware*
-sudo rm irc-bot*
-#sudo rm LICENSE.txt
-sudo rm *.rules
-sudo rm check_*
-sudo rm -R cargo*
-#sudo rm *setfirewall
-
-# move update scripts
-sudo mv ~/update_ubuntu /usr/bin/
-sudo mv ~/check_drop /usr/bin/
-
+##########################################
 # move to /etc/suricata when 5.0.1 upgrade
-sudo mv ~/classification.config /etc/suricata
-sudo mv ~/reference.config /etc/suricata
+##########################################
+sudo mv /root/classification.config /etc/suricata
+sudo mv /root/reference.config /etc/suricata
 
-sudo mv ~/setfirewall /etc/croissants/conf.d/
-sudo mv ~/resetfirewall /etc/croissants/conf.d/
-
-#sudo chmod +x /etc/croissants/conf.d/non_intel_nic
-sudo chmod +x /usr/bin/update_ubuntu
-sudo chmod +x /usr/bin/check_drop
+sudo mv /root/resetfirewall /etc/croissants/conf.d/
 
 sudo chmod +x /etc/croissants/conf.d/setfirewall
 sudo chmod +x /etc/croissants/conf.d/resetfirewall
 
-# disaable irqbalance for performance boost
-#sudo systemctl stop irqbalance
-#sudo systemctl disable irqbalance
-
+##################################################################################
 # disable apport for avoiding high cpu loading and large hard disk spaces occupied
+##################################################################################
 sudo systemctl stop apport
 sudo systemctl disable apport
 
-# set date time to local
-#sudo dpkg-reconfigure tzdata
-sudo mv ~/set_timezone /usr/bin/
-sudo chmod +x /usr/bin/set_timezone
-sudo set_timezone
-
-# solve "Temporary failure in name resolution" as desktop version is enabled
-# apt policy netplan
-sudo systemctl restart systemd-resolved
-
+#########################
 # install suricata-update
+#########################
 sudo pip3 install --upgrade suricata-update
 
-# start suricata
-sudo systemctl restart suricata
+########################
+# set date time to local
+########################
+sudo set_timezone
 
-######### the end ############
+##############
+# rules update
+##############
+sudo nsm_rules_update
+
+# clean up
+sudo rm /root/nsm_install
+sudo rm /root/ids_to_ips
+sudo rm /root/irc-bot_install
+sudo rm /root/*.tar.gz
+sudo rm /root/croissants.rules
+
+# the end
 echo " "
-echo "Installation is complete!  Croissants is working!"
+echo "Installation is complete!  Reboot your box!"
