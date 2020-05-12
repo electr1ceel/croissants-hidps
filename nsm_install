@@ -2802,6 +2802,7 @@ sudo pip3 install --upgrade suricata-update
 ########################
 # set date time to local
 ########################
+sudo dpkg-reconfigure tzdata
 sudo set_timezone
 
 ##############
